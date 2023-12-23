@@ -1,3 +1,7 @@
+/*
+contrlooer for star, no servo drive
+*/
+
 #include "MultithreadIr.h"
 
 const int GARLAND = 23;
