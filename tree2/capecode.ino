@@ -1,16 +1,9 @@
-/*
-controller for star, no servo drive
-*/
+//RGB Driver
 
-#include "MultithreadIr.h"
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 
-const int GARLAND = 23;
-const int IR_PIN = 15;
-
-struct LedInfo {
-  int pins[3];
-  int level;
-};
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 struct RowColor {
   int r, g, b;
@@ -20,17 +13,10 @@ struct StarColor {
   RowColor row_color[3];  
 };
 
-LedInfo led_info[3] = {
-  {{2, 4, 5}, 0},
-  {{13, 12, 14}, 1},
-  {{19, 21, 22}, 2}
-};
-
-
 class Operands {
   public:
     RowColor times(RowColor color, float multiplier) {
-      RowColor result;
+      RowColor result; 
       result.r = color.r * multiplier;
       result.g = color.g * multiplier;
       result.b = color.b * multiplier;
@@ -43,13 +29,17 @@ StarColor star_color;
 
 class LedRow {
   public:
-  int row_id;
-  void setColor(RowColor color) {
-    LedInfo& l = led_info[row_id];
-    analogWrite(l.pins[0], color.r);
-    analogWrite(l.pins[1], color.g);
-    analogWrite(l.pins[2], color.b);
-  }
+    int index;
+    void setColor(RowColor color) {
+      float red=scale*color.r;
+      float blue=scale*color.b;
+      float green=scale*color.g;
+      pwm.setPWM((index)*3, red, 4096-red); //blue
+      pwm.setPWM((index)*3+1, green, 4096-green); //red
+      pwm.setPWM((index)*3+2, blue, 4096-blue); //green
+    }
+  private:
+    const float scale = 2048.0/255.0;
 };
 
 class FadeThruBlack {
@@ -133,7 +123,7 @@ class Paint {
           state = 1;
           x = 10;
         } else {
-          cur_color.row_color[0] = operands.times(fin_color, 1.0/x);
+          cur_color.row_color[0] = operands.times(RowColor {fin_color.r,fin_color.g,0}, 1.0/x);
         }
         break;
       case 1:
@@ -142,7 +132,7 @@ class Paint {
           state = 2;
           x = 10;
         } else {
-          cur_color.row_color[1] = operands.times(fin_color, 1.0/x);
+          cur_color.row_color[1] = operands.times(RowColor {fin_color.r,0,fin_color.b}, 1.0/x);
         }
         break;
       case 2:
@@ -151,7 +141,7 @@ class Paint {
           state = 3;
           x = 10;
         } else {
-          cur_color.row_color[2] = operands.times(fin_color, 1.0/x);
+          cur_color.row_color[2] = operands.times(RowColor {0,fin_color.g,fin_color.b}, 1.0/x);
         }
         break;
       case 3:
@@ -176,42 +166,42 @@ class ColorCycle {
     RowColor tick() {
       switch (state) {
         case 0:
-          color.g++;
+          color.g+=5;
           if (color.g >= 255) {
             color.g = 255;
             state++;
           }
           break;
         case 1:
-          color.r--;
+          color.r-=5;
           if (color.r <= 0) {
             color.r = 0;
             state++;
           }
           break;
         case 2:
-          color.b++;
+          color.b+=5;
           if (color.b >= 255) {
             color.b = 255;
             state++;
           }
           break;
         case 3:
-          color.g--;
+          color.g-=5;
           if (color.g <= 0) {
             color.g = 0;
             state++;
           }
           break;
         case 4:
-          color.r++;
+          color.r+=5;
           if (color.r >= 255) {
             color.r = 255;
             state++;
           }
           break;
         case 5:
-          color.b--;
+          color.b-=5;
           if (color.b <= 0) {
             color.b = 0;
             state = 0;
@@ -235,16 +225,17 @@ class Star {
   Paint *paint;
   FadeThruBlack *fade[3];
   LedRow led_row[3];
+
   void setup() {
     for (int x = 0; x < 3; x++) {
-      for (int y = 0; y < 3; y++) {
-        pinMode(led_info[x].pins[y], OUTPUT);
-      }
+      led_row[x].index = x;
     }
-    for (int x = 0; x < 3; x++) {
-      led_row[x].row_id = x;
+    pwm.begin();
+    pwm.setOscillatorFrequency(27000000);
+    pwm.setPWMFreq(1600);
+    for (int i = 0; i < 16; i++) {
+      pwm.setPWM(i, 0, 4096);
     }
-
   }
   
   void setColor(StarColor color) {
@@ -308,20 +299,13 @@ Star star;
 void setup() {
   Serial.begin(9600);
   star.setup();
-  IrSetup(IR_PIN);
-  pinMode(GARLAND, OUTPUT);
-  star.color_cycles[0] = new ColorCycle(RowColor {255, 0, 0}, 0);
-  star.color_cycles[1] = new ColorCycle(RowColor {255, 0, 0}, 0);
-  star.color_cycles[2] = new ColorCycle(RowColor {255, 0, 0}, 0);
+  //star.color_cycles[0] = new ColorCycle(RowColor {255, 0, 0}, 0);
+  // star.color_cycles[1] = new ColorCycle(RowColor {255, 0, 0}, 0);
+  // star.color_cycles[2] = new ColorCycle(RowColor {255, 0, 0}, 0);
 }
 
 void loop() {
-  if (on) {
-    star.tick();
-    digitalWrite(GARLAND, HIGH);
-  } else {
-    star.setColor(StarColor {RowColor {0, 0, 0}, RowColor {0, 0, 0}, RowColor {0, 0, 0}});
-    digitalWrite(GARLAND, LOW);
-  }
+  //star.tick();
   delay(20);
+  star.led_row[0].setColor(RowColor {255,0,0});
 }

@@ -1,8 +1,9 @@
-/*
-controller for star, no servo drive
-*/
-
 #include "MultithreadIr.h"
+
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 
 const int GARLAND = 23;
 const int IR_PIN = 15;
