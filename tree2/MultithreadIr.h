@@ -5,6 +5,7 @@ bool on = false;
 String input = "";
 int ir_pin;
 TaskHandle_t ir_task;
+QueueHandle_t queue;
 
 void translateIR() {
   switch(IrReceiver.decodedIRData.decodedRawData) {
@@ -48,8 +49,8 @@ void irMultithread(void * pvParameters) {
       }
     }
     delay(10);
-    xQueueCreate(10, sizeof(int));
-    xQueueReceive(queue, &data, portMAX_DELAY);
+    //queue = xQueueCreate(10, sizeof(int));
+    //xQueueReceive(queue, &data, portMAX_DELAY);
   }
 }
 

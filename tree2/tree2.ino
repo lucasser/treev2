@@ -1,32 +1,16 @@
+/*
+controller for star, no servo drive
+*/
+
 #include "MultithreadIr.h"
-
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
-
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+#include "driver.h"
 
 const int GARLAND = 23;
 const int IR_PIN = 15;
 
-struct LedInfo {
-  int pins[3];
-  int level;
-};
-
-struct RowColor {
-  int r, g, b;
-};
-
 struct StarColor {
   RowColor row_color[3];  
 };
-
-LedInfo led_info[3] = {
-  {{2, 4, 5}, 0},
-  {{13, 12, 14}, 1},
-  {{19, 21, 22}, 2}
-};
-
 
 class Operands {
   public:
@@ -41,17 +25,6 @@ class Operands {
 
 Operands operands;
 StarColor star_color;
-
-class LedRow {
-  public:
-  int row_id;
-  void setColor(RowColor color) {
-    LedInfo& l = led_info[row_id];
-    analogWrite(l.pins[0], color.r);
-    analogWrite(l.pins[1], color.g);
-    analogWrite(l.pins[2], color.b);
-  }
-};
 
 class FadeThruBlack {
   private:
@@ -235,17 +208,11 @@ class Star {
   ColorCycle *color_cycles[3];
   Paint *paint;
   FadeThruBlack *fade[3];
-  LedRow led_row[3];
+  StarRow led_row[3];
+  Strip strip_row[10];
   void setup() {
-    for (int x = 0; x < 3; x++) {
-      for (int y = 0; y < 3; y++) {
-        pinMode(led_info[x].pins[y], OUTPUT);
-      }
-    }
-    for (int x = 0; x < 3; x++) {
-      led_row[x].row_id = x;
-    }
-
+    StarSetup(led_row[3]);
+    StripSetup(strip_row[10]);
   }
   
   void setColor(StarColor color) {
@@ -307,7 +274,8 @@ class Star {
 Star star;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.println("setup");
   star.setup();
   IrSetup(IR_PIN);
   pinMode(GARLAND, OUTPUT);
